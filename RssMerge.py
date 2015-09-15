@@ -9,6 +9,8 @@ now = pytz.UTC.localize(datetime.datetime.now());
 import traceback
 import codecs
 import sys
+import pprint
+pp = pprint.pprint
 
 settings = {};
 
@@ -123,8 +125,17 @@ def fetchFeed(itemInfos):
 	feed = []
 
 	for entry in source.entries:
+		#print(entry);
 		# Making sure the required fields are here
-		fillWithDefault(entry, {'title': "TITLE", 'link': "LINK", 'summary': "SUMMARY"});
+		fillWithDefault(entry, {'title': "TITLE", 'link': "LINK", 'summary': "SUMMARY", 'media_description': None});
+
+		# Special treatement for the summary in youtube feeds
+		if 'youtube' in itemInfos['type']:
+			entry['summary'] = '<h1>' + entry['title'] + '</h1>' + \
+				'<iframe id="ytplayer" type="text/html" width="640" height="390" src="https://www.youtube.com/embed/' + \
+				re.sub(r'.*youtube.com/watch.*v=([^&]+)', r'\1', entry['link']) + '"/>';
+			if entry['media_description']:
+				entry['summary'] += '<p>' + entry['media_description'] + '</p>';
 		
 		# Pattern substitution on the title
 		if (itemInfos['regex']['pattern'] != None and itemInfos['regex']['replace'] != None):

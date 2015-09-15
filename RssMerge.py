@@ -2,6 +2,7 @@ import json
 import time
 import re
 import feedparser
+import socket
 import PyRSS2Gen
 import pytz
 import datetime
@@ -14,6 +15,9 @@ import pprint
 pp = pprint.pprint
 
 settings = {};
+
+# Sets a timeout of 15 sec for feedparser
+socket.setdefaulttimeout(15);
 
 
 def main(argv):

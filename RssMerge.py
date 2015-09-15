@@ -9,6 +9,7 @@ now = pytz.UTC.localize(datetime.datetime.now());
 import traceback
 import codecs
 import sys
+import argparse
 import pprint
 pp = pprint.pprint
 
@@ -18,21 +19,37 @@ settings = {};
 def main(argv):
 	global settings
 
-	try:
-		databasePath = argv[1];
-	except:
-		print("The path of the json input must be passed as an argument.");
-		return;
-	db = openDB(databasePath)
+	# Parsing arguments
+	parser = argparse.ArgumentParser(description='Merge RSS feeds.')
+	parser.add_argument(
+		'--log', '-l', action='store', required=False,
+		dest='logLevel', default=3,
+		help='logging level (default=3): 0=off, 1=critical, 2=errors, 3=warnings, 4=info, 5=debug'
+	)
+	parser.add_argument(
+		'--log-output', action='store', required=False,
+		dest='logOutput', default=None,
+		help='output file for the log'
+	)
+	parser.add_argument(
+		'databasePath', action='store',
+		help='name of the json file containing the feeds to parse'
+	)
+	args = parser.parse_args()
+
+
+	db = openDB(args.databasePath);
 	settings = db['settings'];
 	for item in db['data']:
 		try:
 			createFeed(item);
 		except:
-			print('>>> traceback <<<')
-			traceback.print_exc()
-			print('>>> end of traceback <<<')
+			print('>>> traceback <<<');
+			traceback.print_exc();
+			print('>>> end of traceback <<<');
 
+def usage():
+	print("HELP PLACEHOLDER");
 
 
 def fillWithDefault(data, default):

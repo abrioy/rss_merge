@@ -29,7 +29,7 @@ def main(argv):
 	parser = argparse.ArgumentParser(description='Merge RSS feeds.')
 	parser.add_argument(
 		'--log', '-l', action='store', required=False,
-		dest='logLevel', default=4,
+		dest='logLevel', default='4',
 		help='logging level (default=4): 0=off, 1=critical, 2=errors, 3=warnings, 4=info, 5=debug'
 	)
 	parser.add_argument(

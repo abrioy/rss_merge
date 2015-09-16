@@ -72,12 +72,12 @@ def main(argv):
 	
 	# Redirecting the traceback print to the logger
 	old_print_exception = traceback.print_exception
-	def custom_print_exception(etype, value, tb, limit=None, file=None):
-		tb_output = StringIO.StringIO()
+	def custom_print_exception(etype, value, tb, limit=None, file=None, chain=None):
+		tb_output = StringIO()
 		traceback.print_tb(tb, limit, tb_output)
 		logger.error(tb_output.getvalue())
 		tb_output.close()
-		old_print_exception(etype, value, tb, limit=None, file=None)
+		old_print_exception(etype, value, tb, limit=None, file=None, chain=None)
 	traceback.print_exception = custom_print_exception
 
 
@@ -88,6 +88,7 @@ def main(argv):
 		try:
 			createFeed(item);
 		except:
+			logger.error("Exception raised while creating the feed: \""+item['title']+"\".");
 			traceback.print_exc();
 
 
@@ -128,6 +129,7 @@ def createFeed(feedInfos):
 		try:
 			feed.extend(fetchFeed(itemInfos));
 		except:
+			logger.error("Exception raised while fetching the feed: \""+itemInfos['name']+"\".");
 			traceback.print_exc()
 
 	# Sorting (to be sure)
@@ -184,6 +186,7 @@ def fetchFeed(itemInfos):
 		logger.warning("Feed is empty: \""+sourceURL+"\".");
 	feed = []
 
+	i = 0;
 	for entry in source.entries:
 		logger.debug(pp(entry));
 		# Making sure the required fields are here
@@ -206,11 +209,16 @@ def fetchFeed(itemInfos):
 			entry['title'] = itemInfos['prefix'] + entry['title']
 			
 			# Checking that there is time information in the feed
-			if (('published' in entry) and ('published_parsed' in entry) and
-				(entry['published'] != None) and (entry['published_parsed'] != None)):
-				feed.append(entry);
-			else:
-				logger.warning("Discarded an entry in \""+itemInfos['name']+"\": \""+entry['title']+"\" - no time data.");
+			if (not (('published' in entry) and ('published_parsed' in entry) and
+					(entry['published'] != None) and (entry['published_parsed'] != None))):
+				# Creating a phony date
+				entry['published'] = datetime.datetime.fromtimestamp(1) + datetime.timedelta(days=(len(source.entries)-i))
+				entry['published_parsed'] = entry['published'].timetuple()
+				logger.warning("Incorrect entry in \""+itemInfos['name']+"\": \""+entry['title']+"\" - no time data. Adding a phony date: "+str(entry['published']));
+
+			feed.append(entry);
+		i += 1
+
 	
 
 	# Sorting

@@ -177,9 +177,11 @@ def fetchFeed(itemInfos):
 		sourceURL = itemInfos['source'];
 
 	source = feedparser.parse(sourceURL);
-	if source.entries == []:
+	if source.bozo != 0:
 		logger.error("Error with an RSS feed: \""+sourceURL+"\".");
 		logger.error(str(source));
+	if source.feed == []:
+		logger.warning("Feed is empty: \""+sourceURL+"\".");
 	feed = []
 
 	for entry in source.entries:

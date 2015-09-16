@@ -6,9 +6,8 @@ import socket
 import PyRSS2Gen
 import pytz
 import datetime
-now = pytz.UTC.localize(datetime.datetime.now());
+now = pytz.UTC.localize(datetime.datetime.utcnow());
 import traceback
-import codecs
 import sys
 import argparse
 import pprint
@@ -17,7 +16,7 @@ pp = pprint.pprint
 settings = {};
 
 # Sets a timeout of 15 sec for feedparser
-socket.setdefaulttimeout(15);
+socket.setdefaulttimeout(5);
 
 
 def main(argv):
@@ -123,7 +122,7 @@ def createFeed(feedInfos):
 
 	rss = rss.to_xml("utf-8");
 
-	feedFile = codecs.open(settings['OUTPUT_DIRECTORY'] + feedInfos['filename'] , "w", "utf-8");
+	feedFile = open(settings['OUTPUT_DIRECTORY'] + feedInfos['filename'] , "w");
 	feedFile.write(rss);
 	feedFile.close();
 
@@ -142,7 +141,7 @@ def fetchFeed(itemInfos):
 
 	source = feedparser.parse(sourceURL);
 	if source.entries == []:
-		print("X\t\t> RSS feed not found: \""+sourceURL+"\".");
+		print("X\t\t> Error with an RSS feed: \""+sourceURL+"\".\n\t\t    "+str(source));
 	feed = []
 
 	for entry in source.entries:

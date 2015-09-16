@@ -11,7 +11,7 @@ import sys
 import argparse
 import pprint
 pp = pprint.pformat
-import StringIO
+from io import StringIO
 import traceback
 import logging
 
@@ -156,10 +156,9 @@ def createFeed(feedInfos):
 		items = rssItems
 	);
 
-	rss = rss.to_xml("utf-8");
 
-	feedFile = open(settings['OUTPUT_DIRECTORY'] + feedInfos['filename'] , "w");
-	feedFile.write(rss);
+	feedFile = open(settings['OUTPUT_DIRECTORY'] + feedInfos['filename'], "wb");
+	rss.write_xml(feedFile);
 	feedFile.close();
 
 

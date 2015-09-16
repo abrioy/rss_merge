@@ -7,13 +7,15 @@ import PyRSS2Gen
 import pytz
 import datetime
 now = pytz.UTC.localize(datetime.datetime.utcnow());
-import traceback
 import sys
 import argparse
 import pprint
-pp = pprint.pprint
+pp = pprint.pformat
+import StringIO
+import traceback
+import logging
 
-settings = {};
+
 
 # Sets a timeout of 15 sec for feedparser
 socket.setdefaulttimeout(5);
@@ -21,6 +23,7 @@ socket.setdefaulttimeout(5);
 
 def main(argv):
 	global settings
+	global logger
 
 	# Parsing arguments
 	parser = argparse.ArgumentParser(description='Merge RSS feeds.')
@@ -41,18 +44,52 @@ def main(argv):
 	args = parser.parse_args()
 
 
+
+	# Logging
+	logger = logging.getLogger()
+	if args.logOutput:
+		handler = logging.FileHandler(args.logOutput)
+	else:
+		handler = logging.StreamHandler()
+
+	formatter = logging.Formatter(
+	        '%(asctime)s %(levelname)-8s %(message)s')
+	handler.setFormatter(formatter)
+	logger.addHandler(handler)
+	levels = {
+		'0' : logging.NOTSET,
+		'1' : logging.CRITICAL,
+		'2' : logging.ERROR,
+		'3' : logging.WARNING,
+		'4' : logging.INFO,
+		'5' : logging.DEBUG
+	}
+	try:
+		logger.setLevel(levels[args.logLevel])
+	except:
+		logger.setLevel(logging.WARNING)
+		logger.warning("Invalid logging level: "+args.logLevel)
+	
+	# Redirecting the traceback print to the logger
+	old_print_exception = traceback.print_exception
+	def custom_print_exception(etype, value, tb, limit=None, file=None):
+		tb_output = StringIO.StringIO()
+		traceback.print_tb(tb, limit, tb_output)
+		logger.error(tb_output.getvalue())
+		tb_output.close()
+		old_print_exception(etype, value, tb, limit=None, file=None)
+	traceback.print_exception = custom_print_exception
+
+
+	# Opening the db and creating the feeds
 	db = openDB(args.databasePath);
 	settings = db['settings'];
 	for item in db['data']:
 		try:
 			createFeed(item);
 		except:
-			print('>>> traceback <<<');
 			traceback.print_exc();
-			print('>>> end of traceback <<<');
 
-def usage():
-	print("HELP PLACEHOLDER");
 
 
 def fillWithDefault(data, default):
@@ -81,8 +118,9 @@ def openDB(databasePath):
 
 def createFeed(feedInfos):
 	global settings
+	global logger
 
-	print("Creating feed \""+feedInfos['title']+"\".");
+	logger.info("Creating feed \""+feedInfos['title']+"\".");
 
 	feed = [];
 	for itemInfos in feedInfos['feeds']:
@@ -90,9 +128,7 @@ def createFeed(feedInfos):
 		try:
 			feed.extend(fetchFeed(itemInfos));
 		except:
-			print( '>>> traceback <<<')
 			traceback.print_exc()
-			print('>>> end of traceback <<<')
 
 	# Sorting (to be sure)
 	feed = sorted(feed, key=lambda k: k['published_parsed'], reverse=True) ;
@@ -128,9 +164,11 @@ def createFeed(feedInfos):
 
 
 def fetchFeed(itemInfos):
-	global settings
+	global settings	
+	global logger
 
-	print("\tFetching feed \""+itemInfos['name']+"\".");
+
+	logger.info("\tFetching feed \""+itemInfos['name']+"\".");
 
 	if itemInfos['type'] == 'youtube':
 		sourceURL = settings['YOUTUBE_URL_CHANNEL'] + itemInfos['source'];
@@ -141,11 +179,11 @@ def fetchFeed(itemInfos):
 
 	source = feedparser.parse(sourceURL);
 	if source.entries == []:
-		print("X\t\t> Error with an RSS feed: \""+sourceURL+"\".\n\t\t    "+str(source));
+		logger.error("X\t\t> Error with an RSS feed: \""+sourceURL+"\".\n\t\t    "+str(source));
 	feed = []
 
 	for entry in source.entries:
-		#print(entry);
+		logger.debug(pp(entry));
 		# Making sure the required fields are here
 		fillWithDefault(entry, {'title': "TITLE", 'link': "LINK", 'summary': "SUMMARY", 'media_description': None});
 
@@ -170,7 +208,7 @@ def fetchFeed(itemInfos):
 				(entry['published'] != None) and (entry['published_parsed'] != None)):
 				feed.append(entry);
 			else:
-				print("\t\t> Discarded entry \""+entry['title']+"\": no time data.")
+				logger.warning("\t\t> Discarded entry \""+entry['title']+"\": no time data.")
 	
 
 	# Sorting

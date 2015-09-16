@@ -29,8 +29,8 @@ def main(argv):
 	parser = argparse.ArgumentParser(description='Merge RSS feeds.')
 	parser.add_argument(
 		'--log', '-l', action='store', required=False,
-		dest='logLevel', default=3,
-		help='logging level (default=3): 0=off, 1=critical, 2=errors, 3=warnings, 4=info, 5=debug'
+		dest='logLevel', default=4,
+		help='logging level (default=4): 0=off, 1=critical, 2=errors, 3=warnings, 4=info, 5=debug'
 	)
 	parser.add_argument(
 		'--log-output', action='store', required=False,
@@ -67,7 +67,7 @@ def main(argv):
 	try:
 		logger.setLevel(levels[args.logLevel])
 	except:
-		logger.setLevel(logging.WARNING)
+		logger.setLevel(logging.INFO)
 		logger.warning("Invalid logging level: "+args.logLevel)
 	
 	# Redirecting the traceback print to the logger
@@ -179,7 +179,8 @@ def fetchFeed(itemInfos):
 
 	source = feedparser.parse(sourceURL);
 	if source.entries == []:
-		logger.error("X\t\t> Error with an RSS feed: \""+sourceURL+"\".\n\t\t    "+str(source));
+		logger.error("Error with an RSS feed: \""+sourceURL+"\".");
+		logger.error(str(source));
 	feed = []
 
 	for entry in source.entries:
@@ -208,7 +209,7 @@ def fetchFeed(itemInfos):
 				(entry['published'] != None) and (entry['published_parsed'] != None)):
 				feed.append(entry);
 			else:
-				logger.warning("\t\t> Discarded entry \""+entry['title']+"\": no time data.")
+				logger.warning("Discarded an entry in \""+itemInfos['name']+"\": \""+entry['title']+"\" - no time data.");
 	
 
 	# Sorting

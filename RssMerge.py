@@ -82,7 +82,12 @@ def main(argv):
 
 
 	# Opening the db and creating the feeds
-	db = openDB(args.databasePath);
+	try:
+		db = openDB(args.databasePath);
+	except:
+		logger.critical("Error while opening the input file \""+args.databasePath+"\".");
+		traceback.print_exc();
+		
 	settings = db['settings'];
 	for item in db['data']:
 		try:
@@ -180,8 +185,11 @@ def fetchFeed(itemInfos):
 
 	source = feedparser.parse(sourceURL, agent='Mozilla/5.0');
 	if source.bozo and source.bozo != 0:
-		logger.error("Error with an RSS feed: \""+sourceURL+"\": "+str(source.bozo_exception));
-	if source.feed == []:
+		if source.feed == []:
+			logger.error("Error with an RSS feed, no elements found: \""+sourceURL+"\".\n"+pp(source));
+		else:
+			logger.warning("There is an error with the feed: \""+sourceURL+"\": "+str(source.bozo_exception));
+	elif source.feed == []:
 		logger.warning("Feed is empty: \""+sourceURL+"\".");
 	feed = []
 

@@ -178,10 +178,9 @@ def fetchFeed(itemInfos):
 	else:
 		sourceURL = itemInfos['source'];
 
-	source = feedparser.parse(sourceURL);
-	if source.bozo != 0:
-		logger.error("Error with an RSS feed: \""+sourceURL+"\".");
-		logger.error(str(source));
+	source = feedparser.parse(sourceURL, agent='Mozilla/5.0');
+	if source.bozo and source.bozo != 0:
+		logger.error("Error with an RSS feed: \""+sourceURL+"\": "+str(source.bozo_exception));
 	if source.feed == []:
 		logger.warning("Feed is empty: \""+sourceURL+"\".");
 	feed = []

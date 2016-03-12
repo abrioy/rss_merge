@@ -15,10 +15,40 @@ from io import StringIO
 import traceback
 import logging
 
+DEFAULT_SETTINGS = {
+	"settings": {
+		"YOUTUBE_URL_CHANNEL": "https://www.youtube.com/feeds/videos.xml?channel_id=",
+		"YOUTUBE_URL_PLAYLIST": "https://www.youtube.com/feeds/videos.xml?playlist_id=",
+		"OUTPUT_DIRECTORY": "."
 
+	},
+	"defaults": {
+		"filename": "feed.rss",
+		"title": "Feed",
+		"link": "",
+		"summary": "RSSfeed",
+		"size": 30,
+
+		"feeds":{
+			"name": "Feed",
+
+			"type": "normal",
+			"source": "",
+
+			"size": 6,
+
+			"prefix": "",
+			"regex": {
+				"pattern": null,
+				"replace": null
+			},
+			"filter": null
+		}
+	},
+}
 
 # Sets a timeout of 15 sec for feedparser
-socket.setdefaulttimeout(5);
+socket.setdefaulttimeout(15);
 
 
 def main(argv):
@@ -116,7 +146,9 @@ def openDB(databasePath):
 	dbFile = open(databasePath,'r');
 	db = json.loads(dbFile.read());
 	dbFile.close();
-	fillWithDefault(db['data'], db['defaults']),
+	fillWithDefault(db['settings'], DEFAULT_SETTINGS['settings']);
+	fillWithDefault(db['defaults'], DEFAULT_SETTINGS['defaults']);
+	fillWithDefault(db['data'], db['defaults']);
 
 	return db
 

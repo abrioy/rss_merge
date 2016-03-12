@@ -2,7 +2,7 @@
 	"settings": {
 		"YOUTUBE_URL_CHANNEL": "https://www.youtube.com/feeds/videos.xml?channel_id=",
 		"YOUTUBE_URL_PLAYLIST": "https://www.youtube.com/feeds/videos.xml?playlist_id=",
-		"OUTPUT_DIRECTORY": ".\\"
+		"OUTPUT_DIRECTORY": "."
 		
 	},
 	"defaults": {

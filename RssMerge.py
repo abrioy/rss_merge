@@ -39,10 +39,10 @@ DEFAULT_SETTINGS = {
 
 			"prefix": "",
 			"regex": {
-				"pattern": null,
-				"replace": null
+				"pattern": None,
+				"replace": None
 			},
-			"filter": null
+			"filter": None
 		}
 	},
 }
@@ -269,4 +269,4 @@ def fetchFeed(itemInfos):
 
 
 if __name__ == "__main__":
-   main(sys.argv)
+    main(sys.argv)

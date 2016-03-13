@@ -1,91 +1,52 @@
 {
-	"settings": {
-		"YOUTUBE_URL_CHANNEL": "https://www.youtube.com/feeds/videos.xml?channel_id=",
-		"YOUTUBE_URL_PLAYLIST": "https://www.youtube.com/feeds/videos.xml?playlist_id=",
-		"OUTPUT_DIRECTORY": ""
-		
-	},
-	"defaults": {
-		"filename": "feed.rss",
-		"title": "Feed",
-		"link": "",
-		"summary": "RSSfeed",
-		"size": 30,
+  "title": "Feed",
+  "link": "",
+  "summary": "RSSfeed",
+  "size": 30,
 
-		"feeds":{
-			"name": "Feed",
+  "defaults": {
+    "name": "Feed",
+    "type": "normal",
+    "source": "",
+    "size": 6,
+    "prefix": "",
+    "regex": {
+      "pattern": null,
+      "replace": null
+    },
+    "filter": null
+  },
 
-			"type": "normal",	
-			"source": "",		
+  "feeds": [
+    {
+      "name": "Stackoverflow",
+      "source": "http://stackoverflow.com/feeds",
+      "prefix": "[SO] ",
+      "filter": ".*[c,C].*"
+    },
+    {
+      "name": "Google",
+      "type": "youtube",
+      "source": "UCK8sQmJBp8GCxrOtXWBpyEA",
+      "prefix": "[Google] ",
+      "regex":{
+        "pattern": "o",
+        "replace": "0"
+      }
+    },
+    {
+      "name": "Google2",
+      "type": "youtube",
+      "source": "UC_x5XG1OV2P6uZZ5FSM9Ttw"
+    },
+    {
+    "name": "Some playlist",
+    "type": "youtube-playlist",
+    "source": "PLOU2XLYxmsIKEOXh5TwZEv89aofHzNCiu",
+    "prefix": "[Playlist 1] "
+    },
+  ]
+}
 
-			"size": 6,
-			
-			"prefix": "",
-			"regex": {
-				"pattern": null,
-				"replace": null
-			},
-			"filter": null
-		}
-	},
-
-
-	"data": [
-		{
-			"filename": "FEED1.rss",
-			"title": "Feed 1",
-			"link": "http://www.google.com",
-			"summary": "Example feed 1",
-
-			"feeds":[
-				{
-					"name": "Stackoverflow",
-					"source": "http://stackoverflow.com/feeds",
-					"prefix": "[SO] ",
-					"filter": ".*[c,C].*"
-				},
-				{
-					"name": "Google",
-					"type": "youtube",
-					"source": "UCK8sQmJBp8GCxrOtXWBpyEA",
-					"prefix": "[Google] ",
-					"regex":{
-						"pattern": "o",
-						"replace": "0"
-					}
-				},
-				{
-					"name": "Google2",
-					"type": "youtube",
-					"source": "UC_x5XG1OV2P6uZZ5FSM9Ttw"
-				}
-				
-
-			]
-		},
-
-		{
-			"filename": "FEED2.rss",
-			"title": "Youtube playlists",
-			"link": "https://www.youtube.com/user/YouTube",
-			"summary": "Example feed 2",
-			"feeds": [
-				{
-					"name": "Random playlist",
-					"type": "youtube-playlist",
-					"source": "PLOU2XLYxmsIKEOXh5TwZEv89aofHzNCiu",
-					"prefix": "[Playlist 1] "
-				},
-				{
-					"name": "Hubble",
-					"type": "youtube-playlist",
-					"source": "PLbpi6ZahtOH5TOhz7b42_3f7W8dmVe_Hz",
-					"prefix": "[Playlist 2] "
-				}
-			]
-		}
-
-
-	]
 
 }

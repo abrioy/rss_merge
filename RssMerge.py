@@ -1,271 +1,247 @@
 import json
-import time
 import re
 import feedparser
 import socket
 import PyRSS2Gen
 import pytz
 import datetime
-now = pytz.UTC.localize(datetime.datetime.utcnow());
 import sys
 import argparse
-import pprint
-pp = pprint.pformat
-from io import StringIO
-import traceback
 import logging
 
-DEFAULT_SETTINGS = {
-	"settings": {
-		"YOUTUBE_URL_CHANNEL": "https://www.youtube.com/feeds/videos.xml?channel_id=",
-		"YOUTUBE_URL_PLAYLIST": "https://www.youtube.com/feeds/videos.xml?playlist_id=",
-		"OUTPUT_DIRECTORY": "."
 
-	},
-	"defaults": {
-		"filename": "feed.rss",
-		"title": "Feed",
-		"link": "",
-		"summary": "RSSfeed",
-		"size": 30,
+now = pytz.UTC.localize(datetime.datetime.utcnow())
 
-		"feeds":{
-			"name": "Feed",
+YOUTUBE_URL_CHANNEL = "https://www.youtube.com/feeds/videos.xml?channel_id=%s"
+YOUTUBE_URL_PLAYLIST = "https://www.youtube.com/feeds/videos.xml?playlist_id=%s"
 
-			"type": "normal",
-			"source": "",
+DEFAULTS = {
+    "title": "Feed",
+    "link": "",
+    "summary": "RSSfeed",
+    "size": 30,
 
-			"size": 6,
+    "feeds":{
+        "name": "Feed",
 
-			"prefix": "",
-			"regex": {
-				"pattern": None,
-				"replace": None
-			},
-			"filter": None
-		}
-	},
+        "type": "normal",
+        "source": "",
+
+        "size": 6,
+
+        "prefix": "",
+        "regex": {
+            "pattern": None,
+            "replace": None
+        },
+        "filter": None
+    }
 }
 
-# Sets a timeout of 15 sec for feedparser
-socket.setdefaulttimeout(15);
+# Sets a timeout for feedparser
+socket.setdefaulttimeout(15)
 
 
 def main(argv):
-	global settings
-	global logger
+    global logger
 
-	# Parsing arguments
-	parser = argparse.ArgumentParser(description='Merge RSS feeds.')
-	parser.add_argument(
-		'--log', '-l', action='store', required=False,
-		dest='logLevel', default='4',
-		help='logging level (default=4): 0=off, 1=critical, 2=errors, 3=warnings, 4=info, 5=debug'
-	)
-	parser.add_argument(
-		'--log-output', action='store', required=False,
-		dest='logOutput', default=None,
-		help='output file for the log'
-	)
-	parser.add_argument(
-		'databasePath', action='store',
-		help='name of the json file containing the feeds to parse'
-	)
-	args = parser.parse_args()
-
-
-
-	# Logging
-	logger = logging.getLogger()
-	if args.logOutput:
-		handler = logging.FileHandler(args.logOutput)
-	else:
-		handler = logging.StreamHandler()
-
-	formatter = logging.Formatter(
-	        '%(asctime)s %(levelname)-8s %(message)s')
-	handler.setFormatter(formatter)
-	logger.addHandler(handler)
-	levels = {
-		'0' : logging.NOTSET,
-		'1' : logging.CRITICAL,
-		'2' : logging.ERROR,
-		'3' : logging.WARNING,
-		'4' : logging.INFO,
-		'5' : logging.DEBUG
-	}
-	try:
-		logger.setLevel(levels[args.logLevel])
-	except:
-		logger.setLevel(logging.INFO)
-		logger.warning("Invalid logging level: "+args.logLevel)
-	
-	# Redirecting the traceback print to the logger
-	old_print_exception = traceback.print_exception
-	def custom_print_exception(etype, value, tb, limit=None, file=None, chain=None):
-		tb_output = StringIO()
-		traceback.print_tb(tb, limit, tb_output)
-		logger.error(tb_output.getvalue())
-		tb_output.close()
-		old_print_exception(etype, value, tb, limit=None, file=None, chain=None)
-	traceback.print_exception = custom_print_exception
+    # Parsing arguments
+    parser = argparse.ArgumentParser(description='Merge RSS feeds.')
+    parser.add_argument(
+            '--log', '-l', action='store', required=False,
+            dest='logLevel', default='4',
+            help='logging level (default=4): 0=off, 1=critical, 2=errors, 3=warnings, 4=info, 5=debug'
+    )
+    parser.add_argument(
+            '--log-output', action='store', required=False,
+            dest='logOutputFile', default=None,
+            help='output file for the log'
+    )
+    parser.add_argument(
+            '-o', '-output', action='store', required=False,
+            dest='output', default=None,
+            help='output rss file'
+    )
+    parser.add_argument(
+            'feedsFilePath', metavar="feeds.json", action='store',
+            help='name of the json file containing the feeds to parse'
+    )
+    args = parser.parse_args()
 
 
-	# Opening the db and creating the feeds
-	try:
-		db = openDB(args.databasePath);
-	except:
-		logger.critical("Error while opening the input file \""+args.databasePath+"\".");
-		traceback.print_exc();
-		
-	settings = db['settings'];
-	for item in db['data']:
-		try:
-			createFeed(item);
-		except:
-			logger.error("Exception raised while creating the feed: \""+item['title']+"\".");
-			traceback.print_exc();
+
+    # Logging
+    logger = logging.getLogger()
+    if args.logOutputFile:
+        handler = logging.FileHandler(args.logOutputFile)
+    else:
+        handler = logging.StreamHandler()
+
+    formatter = logging.Formatter(
+            '%(asctime)s %(levelname)-8s %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    levels = {
+        '0' : logging.NOTSET,
+        '1' : logging.CRITICAL,
+        '2' : logging.ERROR,
+        '3' : logging.WARNING,
+        '4' : logging.INFO,
+        '5' : logging.DEBUG
+    }
+    try:
+        logger.setLevel(levels[args.logLevel])
+    except:
+        logger.setLevel(logging.INFO)
+        logger.warning("Invalid logging level: "+args.logLevel)
+
+
+    # Opening the db and creating the feeds
+    feeds = None
+    try:
+        feeds = openDB(args.feedsFilePath)
+    except IOError as e:
+        logger.critical("Error while opening the input file \"%s\": %s" % (args.feedsFilePath, e))
+
+    if feeds and args.output:
+        with open(args.output, "wb") as outputstream:
+             createFeed(feeds, outputstream)
+    else:
+        createFeed(feeds, sys.stdout)
 
 
 
 def fillWithDefault(data, default):
-	if isinstance(data, dict):
-		for key in default:
-			if key in data:
-				fillWithDefault(data[key], default[key]);
-			else:
-				data[key] = default[key];
+    if isinstance(data, dict):
+        for key in default:
+            if key in data:
+                fillWithDefault(data[key], default[key])
+            else:
+                data[key] = default[key]
 
-	elif isinstance(data, list):
-		for i,val in enumerate(data):
-			fillWithDefault(data[i], default);
+    elif isinstance(data, list):
+        for i,val in enumerate(data):
+            fillWithDefault(data[i], default)
 
 
 
 def openDB(databasePath):
-	dbFile = open(databasePath,'r');
-	db = json.loads(dbFile.read());
-	dbFile.close();
-	fillWithDefault(db['settings'], DEFAULT_SETTINGS['settings']);
-	fillWithDefault(db['defaults'], DEFAULT_SETTINGS['defaults']);
-	fillWithDefault(db['data'], db['defaults']);
+    with open(databasePath,'r') as dbFile:
+        db = json.loads(dbFile.read())
+        dbFile.close()
+        if 'defaults' in db:
+            fillWithDefault(db, DEFAULTS)
+            fillWithDefault(db, db['defaults'])
+        else:
+            fillWithDefault(db, DEFAULTS)
 
-	return db
-
-
-
-def createFeed(feedInfos):
-	global settings
-	global logger
-
-	logger.info("Creating feed \""+feedInfos['title']+"\".");
-
-	feed = [];
-	for itemInfos in feedInfos['feeds']:
-		# Fusing the feed lists while keeping them sorted
-		try:
-			feed.extend(fetchFeed(itemInfos));
-		except:
-			logger.error("Exception raised while fetching the feed: \""+itemInfos['name']+"\".");
-			traceback.print_exc()
-
-	# Sorting (to be sure)
-	feed = sorted(feed, key=lambda k: k['published_parsed'], reverse=True) ;
-	# Truncating
-	del feed[feedInfos['size']:];
-
-	# Creating the feed
-	rssItems = [];
-	for item in feed:
-		rssItems.append(
-			PyRSS2Gen.RSSItem(
-				title = item['title'],
-				link = item['link'],
-				description = item['summary'],
-				guid = PyRSS2Gen.Guid(item['link']),
-				pubDate = item['published'],
-			)
-		);
-
-	rss = PyRSS2Gen.RSS2(
-		title = feedInfos['title'],
-		link = feedInfos['link'],
-		description = feedInfos['summary'],
-		lastBuildDate = now,
-		items = rssItems
-	);
+        return db
 
 
-	feedFile = open(settings['OUTPUT_DIRECTORY'] + feedInfos['filename'], "wb");
-	rss.write_xml(feedFile);
-	feedFile.close();
+
+def createFeed(feedInfos, outputstream):
+    global logger
+
+    logger.info("Creating feed \""+feedInfos['title']+"\".")
+
+    feed = []
+    for itemInfos in feedInfos['feeds']:
+        # Fusing the feed lists while keeping them sorted
+        feed.extend(fetchFeed(itemInfos))
+
+    # Sorting (to be sure)
+    feed = sorted(feed, key=lambda k: k['published_parsed'], reverse=True)
+    # Truncating
+    del feed[feedInfos['size']:]
+
+    # Creating the feed
+    rssItems = []
+    for item in feed:
+        rssItems.append(
+                PyRSS2Gen.RSSItem(
+                        title = item['title'],
+                        link = item['link'],
+                        description = item['summary'],
+                        guid = PyRSS2Gen.Guid(item['link']),
+                        pubDate = item['published'],
+                )
+        )
+
+    rss = PyRSS2Gen.RSS2(
+            title = feedInfos['title'],
+            link = feedInfos['link'],
+            description = feedInfos['summary'],
+            lastBuildDate = now,
+            items = rssItems
+    )
+
+
+    rss.write_xml(outputstream)
 
 
 def fetchFeed(itemInfos):
-	global settings	
-	global logger
+    global logger
 
 
-	logger.info("\tFetching feed \""+itemInfos['name']+"\".");
+    logger.info("\tFetching feed \""+itemInfos['name']+"\".")
 
-	if itemInfos['type'] == 'youtube':
-		sourceURL = settings['YOUTUBE_URL_CHANNEL'] + itemInfos['source'];
-	elif itemInfos['type'] == 'youtube-playlist':
-		sourceURL = settings['YOUTUBE_URL_PLAYLIST'] + itemInfos['source'];
-	else:
-		sourceURL = itemInfos['source'];
+    if itemInfos['type'] == 'youtube':
+        sourceURL = YOUTUBE_URL_CHANNEL % itemInfos['source']
+    elif itemInfos['type'] == 'youtube-playlist':
+        sourceURL = YOUTUBE_URL_PLAYLIST % itemInfos['source']
+    else:
+        sourceURL = itemInfos['source']
 
-	source = feedparser.parse(sourceURL, agent='Mozilla/5.0');
-	if source.bozo and source.bozo != 0:
-		if source.feed == []:
-			logger.error("Error with an RSS feed, no elements found: \""+sourceURL+"\".\n"+pp(source));
-		else:
-			logger.warning("There is an error with the feed: \""+sourceURL+"\": "+str(source.bozo_exception));
-	elif source.feed == []:
-		logger.warning("Feed is empty: \""+sourceURL+"\".");
-	feed = []
+    source = feedparser.parse(sourceURL, agent='Mozilla/5.0')
+    if source.bozo and source.bozo != 0:
+        if source.feed == []:
+            logger.error("Error with an RSS feed, no elements found: \""+sourceURL+"\".\n"+source)
+        else:
+            logger.warning("There is an error with the feed: \""+sourceURL+"\": "+str(source.bozo_exception))
+    elif source.feed == []:
+        logger.warning("Feed is empty: \""+sourceURL+"\".")
+    feed = []
 
-	i = 0;
-	for entry in source.entries:
-		logger.debug(pp(entry));
-		# Making sure the required fields are here
-		fillWithDefault(entry, {'title': "TITLE", 'link': "LINK", 'summary': "SUMMARY", 'media_description': None});
+    i = 0
+    for entry in source.entries:
+        # Making sure the required fields are here
+        fillWithDefault(entry, {'title': "TITLE", 'link': "LINK", 'summary': "SUMMARY", 'media_description': None})
 
-		# Special treatement for the summary in youtube feeds
-		if 'youtube' in itemInfos['type']:
-			entry['summary'] = '<h1>' + entry['title'] + '</h1>' + \
-				'<iframe id="ytplayer" type="text/html" width="640" height="390" src="https://www.youtube.com/embed/' + \
-				re.sub(r'.*youtube.com/watch.*v=([^&]+)', r'\1', entry['link']) + '"/>';
-			if entry['media_description']:
-				entry['summary'] += '<p>' + entry['media_description'] + '</p>';
-		
-		# Pattern substitution on the title
-		if (itemInfos['regex']['pattern'] != None and itemInfos['regex']['replace'] != None):
-			entry['title'] = re.sub(itemInfos['regex']['pattern'], itemInfos['regex']['replace'], entry['title']);
-		
-		# Filtering the titles
-		if not (itemInfos['filter'] != None and not re.match(itemInfos['filter'], entry['title'])):
-			entry['title'] = itemInfos['prefix'] + entry['title']
-			
-			# Checking that there is time information in the feed
-			if (not (('published' in entry) and ('published_parsed' in entry) and
-					(entry['published'] != None) and (entry['published_parsed'] != None))):
-				# Creating a phony date
-				entry['published'] = datetime.datetime.fromtimestamp(1) + datetime.timedelta(days=(len(source.entries)-i))
-				entry['published_parsed'] = entry['published'].timetuple()
-				logger.warning("Incorrect entry in \""+itemInfos['name']+"\": \""+entry['title']+"\" - no time data. Adding a phony date: "+str(entry['published']));
+        # Special treatement for the summary in youtube feeds
+        if 'youtube' in itemInfos['type']:
+            entry['summary'] = '<h1>' + entry['title'] + '</h1>' + \
+                               '<iframe id="ytplayer" type="text/html" width="640" height="390" src="https://www.youtube.com/embed/' + \
+                               re.sub(r'.*youtube.com/watch.*v=([^&]+)', r'\1', entry['link']) + '"/>'
+            if entry['media_description']:
+                entry['summary'] += '<p>' + entry['media_description'] + '</p>'
 
-			feed.append(entry);
-		i += 1
+        # Pattern substitution on the title
+        if (itemInfos['regex']['pattern'] != None and itemInfos['regex']['replace'] != None):
+            entry['title'] = re.sub(itemInfos['regex']['pattern'], itemInfos['regex']['replace'], entry['title'])
 
-	
+        # Filtering the titles
+        if not (itemInfos['filter'] != None and not re.match(itemInfos['filter'], entry['title'])):
+            entry['title'] = itemInfos['prefix'] + entry['title']
 
-	# Sorting
-	feed = sorted(feed, key=lambda k: k['published_parsed'], reverse=True) ;
-	# Truncating
-	del feed[itemInfos['size']:];
+            # Checking that there is time information in the feed
+            if (not (('published' in entry) and ('published_parsed' in entry) and
+                         (entry['published'] != None) and (entry['published_parsed'] != None))):
+                # Creating a phony date
+                entry['published'] = datetime.datetime.fromtimestamp(1) + datetime.timedelta(days=(len(source.entries)-i))
+                entry['published_parsed'] = entry['published'].timetuple()
+                logger.warning("Incorrect entry in \""+itemInfos['name']+"\": \""+entry['title']+"\" - no time data. Adding a phony date: "+str(entry['published']))
 
-	return feed;
+            feed.append(entry)
+        i += 1
+
+
+
+    # Sorting
+    feed = sorted(feed, key=lambda k: k['published_parsed'], reverse=True)
+    # Truncating
+    del feed[itemInfos['size']:]
+
+    return feed
 
 
 if __name__ == "__main__":

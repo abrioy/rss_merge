@@ -11,6 +11,7 @@ import logging
 
 
 now = pytz.UTC.localize(datetime.datetime.utcnow())
+logger = logging.getLogger("RssMerge")
 
 YOUTUBE_URL_CHANNEL = "https://www.youtube.com/feeds/videos.xml?channel_id=%s"
 YOUTUBE_URL_PLAYLIST = "https://www.youtube.com/feeds/videos.xml?playlist_id=%s"
@@ -71,7 +72,6 @@ def main(argv):
 
 
     # Logging
-    logger = logging.getLogger()
     if args.logOutputFile:
         handler = logging.FileHandler(args.logOutputFile)
     else:
@@ -140,8 +140,6 @@ def openDB(databasePath):
 
 
 def createFeed(feedInfos, outputstream):
-    global logger
-
     logger.info("Creating feed \""+feedInfos['title']+"\".")
 
     feed = []
@@ -180,9 +178,6 @@ def createFeed(feedInfos, outputstream):
 
 
 def fetchFeed(itemInfos):
-    global logger
-
-
     logger.info("\tFetching feed \""+itemInfos['name']+"\".")
 
     if itemInfos['type'] == 'youtube':

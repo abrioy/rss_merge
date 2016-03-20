@@ -45,37 +45,36 @@ DEFAULTS = {
 socket.setdefaulttimeout(15)
 
 
-def fill_feeds_with_defaults(data, default):
+def fill_with_defaults(data, default):
     if isinstance(data, dict):
         for key in default:
             if key in data:
-                fill_feeds_with_defaults(data[key], default[key])
+                fill_with_defaults(data[key], default[key])
             else:
                 data[key] = default[key]
 
     elif isinstance(data, list):
         for i, val in enumerate(data):
-            fill_feeds_with_defaults(data[i], default)
+            fill_with_defaults(data[i], default)
 
 
-def open_feeds_database(database_path):
-    with open(database_path, 'r') as dbFile:
-        db = json.loads(dbFile.read())
+def load_json_data(json_path):
+    with open(json_path, 'r') as dbFile:
+        feed_info = json.loads(dbFile.read())
         dbFile.close()
-        if 'defaults' in db:
-            fill_feeds_with_defaults(db, DEFAULTS)
-            fill_feeds_with_defaults(db, db['defaults'])
-        else:
-            fill_feeds_with_defaults(db, DEFAULTS)
 
-        return db
+        fill_with_defaults(feed_info, DEFAULTS)
+        if 'defaults' in feed_info:
+            fill_with_defaults(feed_info, feed_info['defaults'])
+
+        return feed_info
 
 
 def create_feed(feed_info, out_stream):
     logger.info("Creating feed \"" + feed_info['title'] + "\".")
 
     result_feed = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_NUMBER_OF_THREAD) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
         future = executor.map(fetch_feed, feed_info['feeds'])
         for feed in future:
             result_feed.extend(feed)
@@ -132,8 +131,8 @@ def fetch_feed(item_info):
     i = 0
     for entry in source.entries:
         # Making sure the required fields are here
-        fill_feeds_with_defaults(entry,
-                                 {'title': "TITLE", 'link': "LINK", 'summary': "SUMMARY", 'media_description': None})
+        fill_with_defaults(entry,
+                           {'title': "TITLE", 'link': "LINK", 'summary': "SUMMARY", 'media_description': None})
 
         # Special treatment for the summary in youtube feeds
         if 'youtube' in item_info['type']:
@@ -224,7 +223,7 @@ if __name__ == "__main__":
     # Opening the db and creating the feeds
     feeds = None
     try:
-        feeds = open_feeds_database(args.feedsFilePath)
+        feeds = load_json_data(args.feedsFilePath)
     except IOError as e:
         logger.critical("Error while opening the input file \"%s\": %s" % (args.feedsFilePath, e))
 

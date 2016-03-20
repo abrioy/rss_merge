@@ -8,9 +8,12 @@ import datetime
 import sys
 import argparse
 import logging
+import concurrent.futures
 
 now = pytz.UTC.localize(datetime.datetime.utcnow())
 logger = logging.getLogger("RssMerge")
+
+MAX_THREADS = 6
 
 YOUTUBE_URL_CHANNEL = "https://www.youtube.com/feeds/videos.xml?channel_id=%s"
 YOUTUBE_URL_PLAYLIST = "https://www.youtube.com/feeds/videos.xml?playlist_id=%s"
@@ -71,19 +74,20 @@ def open_feeds_database(database_path):
 def create_feed(feed_info, out_stream):
     logger.info("Creating feed \"" + feed_info['title'] + "\".")
 
-    feed = []
-    for item_info in feed_info['feeds']:
-        # Fusing the feed lists while keeping them sorted
-        feed.extend(fetch_feed(item_info))
+    result_feed = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_NUMBER_OF_THREAD) as executor:
+        future = executor.map(fetch_feed, feed_info['feeds'])
+        for feed in future:
+            result_feed.extend(feed)
 
-    # Sorting (to be sure)
-    feed = sorted(feed, key=lambda k: k['published_parsed'], reverse=True)
+    # Sorting (just to be sure)
+    result_feed = sorted(result_feed, key=lambda k: k['published_parsed'], reverse=True)
     # Truncating
-    del feed[feed_info['size']:]
+    del result_feed[feed_info['size']:]
 
     # Creating the feed
     rss_items = []
-    for item in feed:
+    for item in result_feed:
         rss_items.append(
             PyRSS2Gen.RSSItem(
                 title=item['title'],

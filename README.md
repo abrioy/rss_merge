@@ -1,10 +1,11 @@
 rss_merge
+=========
 
 A python script to merge RSS feeds
 
 
 How to run :
-	python RssMerge.py sampleInput.json -o sampleOutput.rss
+`python RssMerge.py sampleInput.json -o sampleOutput.rss`
 
 
 The input file contains a list of the feeds to merge and some metadata, you can specify as many feeds as you want

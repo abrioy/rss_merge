@@ -11,7 +11,7 @@ import logging
 import concurrent.futures
 
 now = pytz.UTC.localize(datetime.datetime.utcnow())
-logger = logging.getLogger("RssMerge")
+logger = logging.getLogger("rss_merge")
 
 MAX_THREADS = 6
 

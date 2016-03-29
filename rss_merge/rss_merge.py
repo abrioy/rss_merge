@@ -14,12 +14,11 @@ import concurrent.futures
 now = pytz.UTC.localize(datetime.datetime.utcnow())
 logger = logging.getLogger("RssMerge")
 
-MAX_THREADS = 6
-
 YOUTUBE_URL_CHANNEL = "https://www.youtube.com/feeds/videos.xml?channel_id=%s"
 YOUTUBE_URL_PLAYLIST = "https://www.youtube.com/feeds/videos.xml?playlist_id=%s"
 
 DEFAULT_ENCODING = "utf-8"
+DEFAULT_MAX_THREADS = 6
 
 DEFAULTS = {
     "title": "Feed",
@@ -77,11 +76,11 @@ def load_json_data(json_path):
         return feed_info
 
 
-def create_feed(feed_info, output_stream, encoding=DEFAULT_ENCODING):
+def create_feed(feed_info, output_stream, encoding=DEFAULT_ENCODING, max_threads=DEFAULT_MAX_THREADS):
     logger.info("Creating feed \"" + feed_info['title'] + "\".")
 
     result_feed = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
         future = executor.map(fetch_feed, feed_info['feeds'])
         for feed in future:
             result_feed.extend(feed)
@@ -203,6 +202,11 @@ if __name__ == "__main__":
         help='output rss file'
     )
     parser.add_argument(
+        '-t', '-threads', action='store', type=int, required=False,
+        dest='max_threads', default=DEFAULT_MAX_THREADS,
+        help='maximum number of simultaneous queries (default: '+str(DEFAULT_MAX_THREADS)+')'
+    )
+    parser.add_argument(
         'feedsFilePath', metavar="feeds.json", action='store',
         help='name of the json file containing the feeds to parse'
     )
@@ -241,7 +245,7 @@ if __name__ == "__main__":
 
     if feeds and args.output:
         with open(args.output, "wb+") as output_stream:
-            create_feed(feeds, output_stream)
+            create_feed(feeds, output_stream, max_threads=args.max_threads)
     else:
-        create_feed(feeds, sys.stdout, encoding=sys.stdout.encoding)
+        create_feed(feeds, sys.stdout, encoding=sys.stdout.encoding, max_threads=args.max_threads)
         sys.stdout.flush()

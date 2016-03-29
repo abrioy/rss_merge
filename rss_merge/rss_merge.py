@@ -12,7 +12,7 @@ import logging
 import concurrent.futures
 
 now = pytz.UTC.localize(datetime.datetime.utcnow())
-logger = logging.getLogger("RssMerge")
+logger = logging.getLogger("rss_merge")
 
 YOUTUBE_URL_CHANNEL = "https://www.youtube.com/feeds/videos.xml?channel_id=%s"
 YOUTUBE_URL_PLAYLIST = "https://www.youtube.com/feeds/videos.xml?playlist_id=%s"

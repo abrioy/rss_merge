@@ -1,3 +1,4 @@
+import time
 import json
 import re
 import feedparser
@@ -17,6 +18,8 @@ MAX_THREADS = 6
 
 YOUTUBE_URL_CHANNEL = "https://www.youtube.com/feeds/videos.xml?channel_id=%s"
 YOUTUBE_URL_PLAYLIST = "https://www.youtube.com/feeds/videos.xml?playlist_id=%s"
+
+DEFAULT_ENCODING = "utf-8"
 
 DEFAULTS = {
     "title": "Feed",
@@ -45,6 +48,10 @@ DEFAULTS = {
 socket.setdefaulttimeout(15)
 
 
+def format_date(date):
+    return time.strftime("%a, %e %b %Y %H:%M:%S %z", date)
+
+
 def fill_with_defaults(data, default):
     if isinstance(data, dict):
         for key in default:
@@ -70,7 +77,7 @@ def load_json_data(json_path):
         return feed_info
 
 
-def create_feed(feed_info, out_stream):
+def create_feed(feed_info, output_stream, encoding=DEFAULT_ENCODING):
     logger.info("Creating feed \"" + feed_info['title'] + "\".")
 
     result_feed = []
@@ -93,7 +100,7 @@ def create_feed(feed_info, out_stream):
                 link=item['link'],
                 description=item['summary'],
                 guid=PyRSS2Gen.Guid(item['link']),
-                pubDate=item['published'],
+                pubDate=format_date(item['published_parsed']),
             )
         )
 
@@ -105,7 +112,12 @@ def create_feed(feed_info, out_stream):
         items=rss_items
     )
 
-    rss.write_xml(out_stream)
+    logger.info("Writing to stream (encoding: %s)..." % encoding)
+    if encoding is DEFAULT_ENCODING:
+        rss.write_xml(output_stream, encoding)
+    else:
+        xml = rss.to_xml(encoding=DEFAULT_ENCODING)
+        output_stream.write(xml.encode(DEFAULT_ENCODING).decode(encoding))
 
 
 def fetch_feed(item_info):
@@ -128,7 +140,7 @@ def fetch_feed(item_info):
         logger.warning("Feed is empty: \"" + source_url + "\".")
     feed = []
 
-    i = 0
+    nb_phony_dates = 0
     for entry in source.entries:
         # Making sure the required fields are here
         fill_with_defaults(entry,
@@ -152,17 +164,17 @@ def fetch_feed(item_info):
             entry['title'] = item_info['prefix'] + entry['title']
 
             # Checking that there is time information in the feed
-            if not (('published' in entry) and ('published_parsed' in entry) and
-                    (entry['published'] is not None) and (entry['published_parsed'] is not None)):
+            if (('published' not in entry) or ('published_parsed' not in entry) or
+                    (entry['published'] is None) or (entry['published_parsed'] is None)):
                 # Creating a phony date
                 entry['published'] = datetime.datetime.fromtimestamp(1) + datetime.timedelta(
-                    days=(len(source.entries) - i))
+                    days=(len(source.entries) - nb_phony_dates))
                 entry['published_parsed'] = entry['published'].timetuple()
                 logger.warning("Incorrect entry in \"" + item_info['name'] + "\": \"" + entry[
                     'title'] + "\" - no time data. Adding a phony date: " + str(entry['published']))
+                nb_phony_dates += 1
 
             feed.append(entry)
-        i += 1
 
     # Sorting
     feed = sorted(feed, key=lambda k: k['published_parsed'], reverse=True)
@@ -203,7 +215,7 @@ if __name__ == "__main__":
         handler = logging.StreamHandler()
 
     formatter = logging.Formatter(
-        '%(asctime)s %(levelname)-8s %(message)s')
+        '%(threadName)s|%(asctime)s %(levelname)-8s %(message)s')
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     levels = {
@@ -228,7 +240,8 @@ if __name__ == "__main__":
         logger.critical("Error while opening the input file \"%s\": %s" % (args.feedsFilePath, e))
 
     if feeds and args.output:
-        with open(args.output, "wb") as output_stream:
+        with open(args.output, "wb+") as output_stream:
             create_feed(feeds, output_stream)
     else:
-        create_feed(feeds, sys.stdout)
+        create_feed(feeds, sys.stdout, encoding=sys.stdout.encoding)
+        sys.stdout.flush()
